@@ -1,0 +1,96 @@
+name: "Vertical AI agent tests"
+description: >-
+  Run a Vertical AI agent's test scenarios with the vai CLI and fail the job
+  when the pass rate is below a threshold. A run passes or fails by the verdict
+  the platform shows, critical call checks and operator overrides included.
+author: "Vertical AI"
+branding:
+  icon: "check-circle"
+  color: "green"
+
+inputs:
+  vai_token:
+    description: >-
+      A Vertical AI personal access token (vai_pat_...) with Edit access,
+      pinned to the agent's workspace. Pass it from a secret.
+    required: true
+  agent:
+    description: "The agent as workspace-slug/agent-slug, for example acme/support."
+    required: true
+  only:
+    description: "Scenario names or ids to run, one per line or comma separated. Empty runs the whole suite."
+    required: false
+    default: ""
+  tags:
+    description: "Run the scenarios carrying any of these tags, one per line or comma separated."
+    required: false
+    default: ""
+  folder:
+    description: "Run the scenarios in this folder."
+    required: false
+    default: ""
+  runs:
+    description: "Runs per scenario. Empty runs a selection once and the whole suite three times."
+    required: false
+    default: ""
+  fail_under:
+    description: "Fail the job when the pass rate over graded runs is below this, from 0 to 1."
+    required: false
+    default: "1"
+  max_spend:
+    description: >-
+      The most a batch may cost, in Australian dollars. A batch the platform
+      estimates at or under it starts without asking; one over it starts
+      nothing and fails the job. Empty fails any batch that costs money.
+    required: false
+    default: ""
+  version:
+    description: "Test this version number instead of the latest."
+    required: false
+    default: ""
+  timeout_minutes:
+    description: "Stop waiting after this many minutes."
+    required: false
+    default: "60"
+  base_url:
+    description: "The platform's address."
+    required: false
+    default: "https://app.verticalai.com.au"
+  cli_version:
+    description: "The @verticalai.com.au/vai version or range to run."
+    required: false
+    default: "1"
+
+outputs:
+  pass_rate:
+    description: "Passed runs over graded runs, from 0 to 1. Empty when nothing was graded."
+    value: ${{ steps.gate.outputs.pass_rate }}
+  passed:
+    description: "Graded runs that passed."
+    value: ${{ steps.gate.outputs.passed }}
+  graded:
+    description: "Runs that were graded."
+    value: ${{ steps.gate.outputs.graded }}
+  batch_id:
+    description: "The test batch, to read again with vai run get_test_results."
+    value: ${{ steps.gate.outputs.batch_id }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: gate
+      shell: bash
+      env:
+        VAI_TOKEN: ${{ inputs.vai_token }}
+        VAI_BASE_URL: ${{ inputs.base_url }}
+        GATE_AGENT: ${{ inputs.agent }}
+        GATE_ONLY: ${{ inputs.only }}
+        GATE_TAGS: ${{ inputs.tags }}
+        GATE_FOLDER: ${{ inputs.folder }}
+        GATE_RUNS: ${{ inputs.runs }}
+        GATE_FAIL_UNDER: ${{ inputs.fail_under }}
+        GATE_MAX_SPEND: ${{ inputs.max_spend }}
+        GATE_VERSION: ${{ inputs.version }}
+        GATE_TIMEOUT: ${{ inputs.timeout_minutes }}
+        GATE_CLI_VERSION: ${{ inputs.cli_version }}
+      run: bash "${GITHUB_ACTION_PATH}/run.sh"
